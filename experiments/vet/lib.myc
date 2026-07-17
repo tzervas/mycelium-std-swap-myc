@@ -1,0 +1,70 @@
+// nodule: std.swap_kw
+// `std.swap` — Ring 1 / Tier A certified, never-silent representation-change surface (M-516).
+//
+// # Summary
+//
+// This is the library form of RFC-0002: every swap yields a target value **and** an inspectable
+// [`SwapCertificate`] describing the conversion, or an explicit error. A swap is **never silent**
+// (C1/G2): unsupported pair → [`SwapError`]; out-of-range → `Err`; no statable bound →
+// [`SwapError::InsufficientCapacity`]. Never a clamp, a re-round, or a sentinel.
+//
+// # Architecture
+//
+// Ring 1 consumer over `mycelium-cert`'s swap engines (KC-3 — this crate adds no trusted code,
+// defines no new legal pairs, and carries no `unsafe`). The single M-210 shared checker lives
+// in `mycelium-cert::check`; this module surfaces it through [`check_swap`].
+//
+// # Guarantee matrix (RFC-0016 §4.5)
+//
+// Encoded as data in [`GUARANTEE_MATRIX`] and asserted in the test suite — never prose-only.
+//
+// # Contract conformance (RFC-0016 §4.1 C1–C6)
+//
+// - **C1 never-silent:** every fallible op returns `Result`; no sentinel, no clamp.
+// - **C2 honest tag:** each op is tagged on `Exact ⊐ Proven ⊐ Empirical ⊐ Declared` per the
+//   landed cert; the tag is *derived* from the cert's basis, never asserted (VR-5).
+// - **C3 no black boxes / EXPLAIN:** every swap returns its [`SwapCertificate`]; [`explain`]
+//   projects it to an [`ExplainRecord`] (G11 dual human/machine form).
+// - **C4 value-semantic:** all ops are pure functions of their inputs (+ `PolicyRef` where
+//   policy-dependent); results are immutable values.
+// - **C5 above the kernel:** consumes `mycelium-cert`; no `unsafe`, no FFI, no new trusted code.
+// - **C6 declared bounded effects:** every op is pure save for bounded `alloc` of the target
+//   value + certificate.
+//
+// ## Ambient Representation (RFC-0012 §8-Q3)
+//
+// This crate's public API participates in the RFC-0012 ambient-representation contract:
+// the representation choice (binary/ternary/dense/VSA) is implicit at the call site but
+// always reified, queryable, and EXPLAIN-able — never a black box (C3/SC-3).
+// [Declared per RFC-0012; direction accepted in DN-07 §8-Q3; per-ring pass scheduled as M-540.]
+//
+// **For this crate (Ring 1, Tier A):** Swap operations are the primary site where representation
+// changes are reified. Every swap returns a [`SwapCertificate`] (the EXPLAIN artifact — ADR-003)
+// describing the conversion; no swap is ever silent (S1/G2). The representation change is not
+// just inspectable after the fact — it is structurally impossible to obtain a converted value
+// without its certificate.
+//
+// # Stability (DN-66 freeze, 2026-07-01)
+//
+// This crate's public API, as documented in `docs/spec/stdlib/swap.md` (spec status:
+// Accepted (2026-06-20)) and asserted by its guarantee-matrix table, is the **frozen baseline** per
+// [DN-66](../../../docs/notes/DN-66-Stdlib-Stable-API-Freeze-And-Rust-Crate-Retirement-Status.md).
+// A future breaking change here needs a spec amendment + changelog entry, not a silent edit (G2).
+//
+// **Unfrozen for the gap-closure window (ADR-045, Accepted 2026-07-10):** this DN-66 freeze is
+// lifted per [ADR-045](../../../docs/adr/ADR-045-Kernel-And-Lexicon-Unfreeze-For-Early-Gap-Closure.md)
+// for a bounded window; a breaking change here still needs a spec amendment + changelog entry
+// (G2), not a silent edit — the window closes per the ADR-045 §2.4 re-freeze conditions, bound by
+// the DN-99 residual worklist.
+// It remains the RFC-0031 D6 differential-oracle reference; no `.myc` port of this module exists yet, so the D6 retirement trigger has not fired and no item here is `#[deprecated]`.
+// @summary: best-effort transpilation via mycelium-transpile (M-873). Declared,
+// unvalidated — no Mycelium parser/typechecker confirms this output; see the
+// accompanying .gap.json for every construct this pass could not express.
+nodule std.swap_kw;
+
+// Declared: co-emitted guarantee-lattice type — referenced in this file but not declared here and not available via a resolved batch `use` (ORACLE-R1 A2; never silent unknown-type file poison — G2/VR-5). Variants use DN-140 `*_kw` renames for the reserved lattice keywords (Exact/Proven/Empirical/Declared).
+// Declared: renamed Exact -> Exact_kw (reserved-word collision, DN-140)
+// Declared: renamed Proven -> Proven_kw (reserved-word collision, DN-140)
+// Declared: renamed Empirical -> Empirical_kw (reserved-word collision, DN-140)
+// Declared: renamed Declared -> Declared_kw (reserved-word collision, DN-140)
+type GuaranteeStrength = Exact_kw | Proven_kw | Empirical_kw | Declared_kw;
